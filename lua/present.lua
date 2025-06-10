@@ -59,17 +59,11 @@ local parse_slides = function(lines)
   return slides
 end
 
-M.start_presentation = function(opts)
-  opts = opts or {}
-  opts.bufnr = opts.bufnr or 0
-
-  local lines = vim.api.nvim_buf_get_lines(opts.bufnr, 0, -1, false)
-  local parsed = parse_slides(lines)
-
-  ---@type vim.api.keyset.win_config[]
+local create_window_configurations = function()
   local width = vim.o.columns
   local height = vim.o.lines
-  local windows = {
+
+  return {
     background = {
       relative = "editor",
       width = width,
@@ -101,7 +95,17 @@ M.start_presentation = function(opts)
     },
     -- footer = {},
   }
+end
 
+M.start_presentation = function(opts)
+  opts = opts or {}
+  opts.bufnr = opts.bufnr or 0
+
+  local lines = vim.api.nvim_buf_get_lines(opts.bufnr, 0, -1, false)
+  local parsed = parse_slides(lines)
+  local current_slide = 1
+
+  local windows = create_window_configurations()
   local background_float = create_floating_window(windows.background)
   local header_float = create_floating_window(windows.header)
   local body_float = create_floating_window(windows.body)
@@ -112,13 +116,12 @@ M.start_presentation = function(opts)
   local set_slide_content = function(idx)
     local slide = parsed.slides[idx]
 
-    local padding = string.rep(" ", (width - #slide.title) / 2)
+    local padding = string.rep(" ", (vim.o.columns - #slide.title) / 2)
     local title = padding .. slide.title
     vim.api.nvim_buf_set_lines(header_float.buf, 0, -1, false, { title })
     vim.api.nvim_buf_set_lines(body_float.buf, 0, -1, false, slide.body)
   end
 
-  local current_slide = 1
   vim.keymap.set("n", "n", function()
     current_slide = math.min(current_slide + 1, #parsed.slides)
     set_slide_content(current_slide)
@@ -161,6 +164,20 @@ M.start_presentation = function(opts)
 
       pcall(vim.api.nvim_win_close, background_float.win, true)
       pcall(vim.api.nvim_win_close, header_float.win, true)
+    end
+  })
+
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = vim.api.nvim_create_augroup("present-resized", {}),
+    callback = function()
+      if body_float.win == nil or not vim.api.nvim_win_is_valid(body_float.win) then
+        return
+      end
+
+      local updated = create_window_configurations()
+      vim.api.nvim_win_set_config(background_float.win, updated.background)
+      vim.api.nvim_win_set_config(header_float.win, updated.header)
+      vim.api.nvim_win_set_config(body_float.win, updated.body)
     end
   })
 
