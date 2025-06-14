@@ -1,7 +1,9 @@
----@diagnostic disable: undefined-field
+---@diagnostic disable: undefined-field, undefined-global
+
 local parse = require"present"._parse_slides
 
 describe("present.parse_slides", function()
+
   it("should parse an empty file", function()
     assert.are.same(
     { slides = { { title = "", body = {} } } },
@@ -10,11 +12,20 @@ describe("present.parse_slides", function()
 
   it("should parse a file with one slide", function()
     assert.are.same(
-    { slides = { { title = "", body = {} } } },
+    {
+      slides = {
+        {
+          title = "# This is the first slide",
+          body = {
+            "This is the body",
+          }
+        }
+      }
+    },
     parse {
-    "# This is the first slide",
-    "This is the body"
-  })
+      "# This is the first slide",
+      "This is the body"
+    })
 
   end)
 end)
