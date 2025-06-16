@@ -1,24 +1,26 @@
 ---@diagnostic disable: undefined-field, undefined-global
 
 local parse = require"present"._parse_slides
+local eq = assert.are.same
 
 describe("present.parse_slides", function()
 
   it("should parse an empty file", function()
-    assert.are.same(
-    { slides = { { title = "", body = {} } } },
+    eq(
+    { slides = { { title = "", body = {}, blocks = {} } } },
     parse {})
   end)
 
   it("should parse a file with one slide", function()
-    assert.are.same(
+    eq(
     {
       slides = {
         {
           title = "# This is the first slide",
           body = {
             "This is the body",
-          }
+          },
+          blocks = {},
         }
       }
     },
@@ -26,6 +28,57 @@ describe("present.parse_slides", function()
       "# This is the first slide",
       "This is the body"
     })
-
   end)
+
+  it("should parse a file with one slide, and a block", function()
+    local results = parse {
+      "# This is the first slide",
+      "This is the body",
+      "```lua",
+      "print('hi')",
+      "```",
+    }
+
+    -- Should only have one slide
+    eq(1, #results.slides)
+
+    local slide = results.slides[1]
+    eq('# This is the first slide', slide.title)
+
+    eq({
+      "This is the body",
+      "```lua",
+      "print('hi')",
+      "```",
+    }, slide.body)
+
+    eq({
+      language = "lua",
+      body = "print('hi')",
+    }, slide.blocks[1])
+--     eq(
+--     {
+--       slides = {
+--         {
+--           title = "# This is the first slide",
+--           body = {
+--             "This is the body",
+--             "```lua",
+--             "print('hi')",
+--             "```",
+--           },
+--           blocks = {
+--             {
+--               vim.trim[[
+-- ```lua
+-- print('hi')
+-- ```
+-- ]]
+--             }
+--           },
+--         }
+--       }
+--     }, )
+  end)
+
 end)
